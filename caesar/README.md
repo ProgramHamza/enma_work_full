@@ -31,9 +31,23 @@ These numbers measure agreement with the teacher's pseudo-labels, not with human
 |---|---|
 | Model definition | Included (see above) |
 | Trained weights (`best_model.pth`) | **Not included.** The scripts look for them in `checkpoints/caesar/best_model.pth` (or `--caesar_ckpt` / `$ENMA_CAESAR_CKPT`) |
-| Training script for the 3D ResNet student (`fast_cnn/train.py`) and its dataset class | **Not included.** They were not part of the original code package either (it was searched in full) |
+| Original training script for the 3D ResNet student (`fast_cnn/train.py`) and its dataset class | **Not included.** They stayed on the laboratory cluster and were not part of the original code package either (it was searched in full) |
+| Re-implemented training script, [`train_caesar.py`](train_caesar.py) | Included. **It is not the original code**: it was written afterwards from the paper (Section III-F) and from the original files that survived, and it was not used to produce the Caesar weights or any reported number. The comment at the top of the file lists what is taken from those sources and what is an assumption |
 
 Sanity test once the weights are available: `python caesar/test_fastcnn.py checkpoints/caesar/best_model.pth`.
+
+Training and evaluation with the re-implementation (needs `torch`, `torchvision` and `opencv-python`, and a data
+folder with one sub-folder per video chunk holding `source_video.mp4` and `swiFT_predictions.csv`):
+
+```
+python caesar/train_caesar.py --data_root data/saved_mri --out_dir checkpoints/caesar
+python caesar/train_caesar.py --data_root data/saved_mri --eval_only --ckpt checkpoints/caesar/best_model.pth
+```
+
+It writes `best_model.pth` in the same format the RL code loads. The data loading, the training loop, the
+checkpoint format and the evaluation were run on a small synthetic dataset with a stand-in network; the
+`r3d_18` backbone itself was not run on the machine where this file was written, because `torchvision` was not
+installed there.
 
 ## `snn_variant/`
 
