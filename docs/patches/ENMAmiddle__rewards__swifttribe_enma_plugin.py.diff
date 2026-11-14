@@ -1,0 +1,17 @@
+--- original/ENMAmiddle/rewards/swifttribe_enma_plugin.py
++++ ENMA_STAR/ENMAmiddle/rewards/swifttribe_enma_plugin.py
+@@ -3,4 +3,5 @@
+ import argparse
+ import json
++import os
+ import subprocess
+ import sys
+@@ -16,5 +17,7 @@
+ 
+ 
+-ENMA_ROOT = Path("/mnt/tribe-share/enma")
++# Root folder that holds the teacher models (expects models/tribev2, models/swift, models/swiftold).
++# Set $ENMA_TEACHER_ROOT to point at it; defaults to ./teacher_models.
++ENMA_ROOT = Path(os.environ.get("ENMA_TEACHER_ROOT", "teacher_models"))
+ ENMA_MODELS_ROOT = ENMA_ROOT / "models"
+ TRIBEV2_ROOT = ENMA_MODELS_ROOT / "tribev2"

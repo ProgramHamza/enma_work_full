@@ -1,0 +1,21 @@
+--- original/caesar/test_fastcnn.py
++++ ENMA_STAR/caesar/test_fastcnn.py
+@@ -1,9 +1,14 @@
++import os
++import sys
+ import torch
+ from pathlib import Path
+ 
+-_FAST_CNN_CKPT = Path("/mnt/tribe-share/enma/models/fast_cnn/checkpoints/best_model.pth")
+-if not _FAST_CNN_CKPT.exists():
+-    _alt = Path(str(_FAST_CNN_CKPT).replace("/mnt/tribe-share/", "/srv/tribe-share/", 1))
+-    if _alt.exists(): _FAST_CNN_CKPT = _alt
++# Usage: python caesar/test_fastcnn.py [path/to/best_model.pth]
++# Default: $ENMA_CAESAR_CKPT, then <repo>/checkpoints/caesar/best_model.pth
++_FAST_CNN_CKPT = Path(
++    (sys.argv[1] if len(sys.argv) > 1 else None)
++    or os.environ.get("ENMA_CAESAR_CKPT")
++    or str(Path(__file__).resolve().parents[1] / "checkpoints" / "caesar" / "best_model.pth")
++)
+ 
+ def _build_fast_affect_cnn():

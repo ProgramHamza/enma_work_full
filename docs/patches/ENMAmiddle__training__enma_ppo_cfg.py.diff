@@ -1,0 +1,15 @@
+--- original/ENMAmiddle/training/enma_ppo_cfg.py
++++ ENMA_STAR/ENMAmiddle/training/enma_ppo_cfg.py
+@@ -10,10 +10,9 @@
+     num_learning_epochs = 5
+     num_mini_batches = 4
+-    learning_rate = 3.0e-4
+-    schedule = "adaptive"
++    learning_rate = 3.0e-4   # constant; the training loop uses plain Adam without a scheduler
+     gamma = 0.99
+     lam = 0.95
+     desired_kl = 0.01
+-    max_grad_norm = 1.0
++    max_grad_norm = 0.5      # value applied by the training loop (clip_grad_norm_)
+ 
+ 

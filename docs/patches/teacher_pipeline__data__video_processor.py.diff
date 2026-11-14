@@ -1,0 +1,9 @@
+--- original/teacher_pipeline/data/video_processor.py
++++ ENMA_STAR/teacher_pipeline/data/video_processor.py
+@@ -32,5 +32,5 @@
+         description=(
+             "Scan videos, split into <=10 minute chunks, assign chunks to lab machines, "
+-            "and write /srv/tribe-share/enma/saved_mri/manifest.csv."
++            "and write the manifest.csv (location set in config.py)."
+         )
+     )

@@ -1,0 +1,23 @@
+# Python packages imported by the code in this repository.
+# Versions are NOT pinned: the versions used for the paper were not recorded.
+# NVIDIA Isaac Sim / Isaac Lab and unitree_rl_lab are installed separately (see docs/REPRODUCING.md).
+# The ROS 2 packages used by the deployment node (rclpy, geometry_msgs, unitree_go) come from a ROS 2 install.
+
+# core (ENMA policy, training, evaluation)
+torch
+torchvision
+snntorch
+gymnasium
+numpy
+tqdm
+
+# analysis / plotting
+pandas
+matplotlib
+
+# camera frames, video and teacher pipeline
+opencv-python
+filelock
+yt-dlp
+nilearn
+pyarrow   # parquet files written/read by the teacher pipeline

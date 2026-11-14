@@ -1,0 +1,27 @@
+--- original/evaluation/plot_metrics.py
++++ ENMA_STAR/evaluation/plot_metrics.py
+@@ -10,8 +10,12 @@
+     parser.add_argument("--model-idx", type=str, default=None, 
+                         help="Index or name of the model/checkpoint directory to plot (e.g. 50, model_50.pt, or YYYY-MM-DD_HH-MM-SS)")
++    parser.add_argument("--ckpt-root", type=str, default=os.path.join("ENMAmiddle", "checkpoints"),
++                        help="Directory that contains one sub-folder per training run.")
++    parser.add_argument("--logs", type=str, nargs="*", default=["train_enma.log"],
++                        help="Training log file(s) written by train_enma.py (stdout redirected to a file).")
+     args = parser.parse_args()
+ 
+     # Find the target checkpoint directory
+-    base_dir = "/srv/tribe-share/trajan/IsaacLab/ENMAmiddle/checkpoints"
++    base_dir = args.ckpt_root
+     dirs = [os.path.join(base_dir, d) for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+     
+@@ -39,9 +43,5 @@
+     print(f"Loading data from run: {latest_dir}")
+ 
+-    log_paths = [
+-        "/srv/tribe-share/trajan/IsaacLab/train_enma_1.log",
+-        "/srv/tribe-share/trajan/IsaacLab/ENMAmiddle/train_enma_2.log",
+-        "/srv/tribe-share/trajan/IsaacLab/train_enma_2.log" # Check both possible locations
+-    ]
++    log_paths = list(args.logs)
+     mean_returns = []
+     return_iterations = []

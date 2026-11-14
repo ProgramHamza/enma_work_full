@@ -1,0 +1,15 @@
+--- original/teacher_pipeline/data/build_dataset.py
++++ ENMA_STAR/teacher_pipeline/data/build_dataset.py
+@@ -205,10 +205,10 @@
+     parser.add_argument(
+         "--saved-mri-dir",
+-        default="/srv/tribe-share/enma/saved_mri",
++        default="data/saved_mri",
+         help="Source saved_mri directory produced by tribev23",
+     )
+     parser.add_argument(
+         "--output-root",
+-        default="/srv/tribe-share/video_mri_emotion_dataset",
++        default="data/video_mri_emotion_dataset",
+         help="Destination dataset root",
+     )

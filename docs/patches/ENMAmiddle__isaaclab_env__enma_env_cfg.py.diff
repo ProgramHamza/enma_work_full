@@ -1,0 +1,62 @@
+--- original/ENMAmiddle/isaaclab_env/enma_env_cfg.py
++++ ENMA_STAR/ENMAmiddle/isaaclab_env/enma_env_cfg.py
+@@ -32,16 +32,18 @@
+ )
+ 
+-def get_valid_path(sub_path):
+-    """Checks for /srv and /mnt mount points and returns the first valid full path."""
+-    if sub_path.startswith("tribe-share/"):
+-        sub_path = sub_path[len("tribe-share/"):]
+-    elif sub_path.startswith("/tribe-share/"):
+-        sub_path = sub_path[len("/tribe-share/"):]
+-    for mount in ["/srv", "/mnt"]:
+-        full_path = os.path.join(mount, "tribe-share", sub_path)
+-        if os.path.exists(full_path):
+-            return full_path
+-    # Return /srv as default if none found
+-    return os.path.join("/srv", "tribe-share", sub_path)
++# ── File locations (override with environment variables) ─────────────────────
++# ENMA_ROOT      : repository root. Set it when this file is copied into unitree_rl_lab.
++# ENMA_HUMAN_USD : USD file of the human avatar.
++# ENMA_LL_POLICY : exported low-level walking policy (TorchScript, 48 -> 12).
++ENMA_ROOT = os.environ.get(
++    "ENMA_ROOT", os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
++)
++HUMAN_USD_PATH = os.environ.get(
++    "ENMA_HUMAN_USD",
++    os.path.join(ENMA_ROOT, "ENMAmiddle", "assets", "humans", "male_adult_medical_01", "male_adult_medical_01.usd"),
++)
++LL_POLICY_PATH = os.environ.get(
++    "ENMA_LL_POLICY", os.path.join(ENMA_ROOT, "checkpoints", "low_level_locomotion", "policy.pt")
++)
+ 
+ 
+@@ -201,5 +203,5 @@
+         prim_path="{ENV_REGEX_NS}/Human",
+         spawn=UsdFileCfg(
+-            usd_path=get_valid_path("trajan/IsaacLab/ENMAmiddle/assets/humans/male_adult_medical_01/male_adult_medical_01.usd"),
++            usd_path=HUMAN_USD_PATH,
+             rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
+         ),
+@@ -245,5 +247,5 @@
+         prim_path="{ENV_REGEX_NS}/Human",
+         spawn=UsdFileCfg(
+-            usd_path=get_valid_path("trajan/IsaacLab/ENMAmiddle/assets/humans/male_adult_medical_01/male_adult_medical_01.usd"),
++            usd_path=HUMAN_USD_PATH,
+             rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
+         ),
+@@ -437,13 +439,5 @@
+         self.camera_height_offset = 0.58
+         
+-        ll_candidates = [
+-            get_valid_path("tribe-share/trajan/unitree_rl_lab/logs/rsl_rl/unitree_go2_velocity/2026-06-26_01-02-14/exported/policy.pt"),
+-            get_valid_path("tribe-share/trajan/rlpolicyworking/policy.pt"),
+-            get_valid_path("policy.pt"),
+-            get_valid_path("rl_models/model_4400.pt"),
+-            get_valid_path("isaac/IsaacLab/logs/rsl_rl/unitree_go2_flat/2026-06-02_16-58-32/exported/policy.pt"),
+-            get_valid_path("isaac/IsaacLab/logs/rsl_rl/unitree_go2_flat/2026-06-01_17-36-54/exported/policy.pt"),
+-            get_valid_path("isaac/IsaacLab/logs/rsl_rl/unitree_go2_velocity/2026-06-05_19-52-38/exported/policy.pt"),
+-        ]
++        ll_candidates = [LL_POLICY_PATH]
+         ll_path = get_first_valid_path(ll_candidates)
+         self.ll_policy = None if self.robot_stationary or ll_path is None else torch.jit.load(ll_path, map_location=self.device)

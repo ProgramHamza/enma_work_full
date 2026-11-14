@@ -1,0 +1,148 @@
+--- original/evaluation/run_evaluation.py
++++ ENMA_STAR/evaluation/run_evaluation.py
+@@ -1,18 +1,21 @@
+ """
+-run_real_eval.py  –  REAL evaluation: no mock data, no numpy random stand-ins.
+-
+-Compares four controllers in Isaac-ENMA-Go2-v0:
+-  1. Nominal Baseline  – nav_cmd computed by env, zero ENMA correction
+-  2. A* Baseline       – same env nav_cmd (proportional steering = A* equiv),
+-                         zero ENMA correction
+-  3. ENMA (mean/best-return) – nav_cmd + ENMA 6D correction, model_0.pt
+-  4. ENMA (best affect bonus) – nav_cmd + ENMA 6D correction, model_5550.pt
++run_evaluation.py  –  REAL evaluation: no mock data, no numpy random stand-ins.
++(Originally named run_real_eval.py.)
++
++Compares six configurations in Isaac-ENMA-Go2-v0:
++  1. ENMA (best) + A*        – A* planner command + ENMA 6D correction (best affective reward checkpoint)
++  2. ENMA (best) + Nominal   – env nav_cmd        + ENMA 6D correction (best affective reward checkpoint)
++  3. A* Baseline             – A* planner command, zero ENMA correction
++  4. ENMA (mean) + A*        – A* planner command + ENMA 6D correction (best total return checkpoint)
++  5. ENMA (mean) + Nominal   – env nav_cmd        + ENMA 6D correction (best total return checkpoint)
++  6. Nominal Baseline        – nav_cmd computed by env, zero ENMA correction
+ 
+ Seeds are fixed before EVERY reset → fully deterministic rollouts.
+ 
+-Usage:
+-  cd /srv/tribe-share/trajan/IsaacLab
+-  /home/aisl/miniconda3/envs/isaacsim51/bin/python \
+-      ENMAmiddle/analysis/analysis_rigorous/run_real_eval.py --headless
++Usage (from the repository root, inside an Isaac Lab Python environment):
++  python evaluation/run_evaluation.py --headless \
++      --ll_policy checkpoints/low_level_locomotion/policy.pt \
++      --enma_return_ckpt checkpoints/enma/model_0.pt \
++      --enma_affect_ckpt checkpoints/enma/model_5550.pt
+ """
+ 
+@@ -26,30 +29,12 @@
+ # ─── Paths ───────────────────────────────────────────────────────────────────
+ SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
+-REPO_ROOT   = os.path.abspath(os.path.join(SCRIPT_DIR, "../../../../"))
+-ENMA_ROOT   = os.path.abspath(os.path.join(SCRIPT_DIR, "../../"))
+-OUT_DIR     = SCRIPT_DIR
++REPO_ROOT   = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))   # repository root
++ENMA_ROOT   = os.path.join(REPO_ROOT, "ENMAmiddle")
++# Location of the unitree_rl_lab sources; override with $UNITREE_RL_LAB_SRC if it lives elsewhere.
++UNITREE_SRC = os.environ.get("UNITREE_RL_LAB_SRC", os.path.join(REPO_ROOT, "unitree_rl_lab", "source"))
+ 
+ sys.path.insert(0, REPO_ROOT)
+-sys.path.insert(0, os.path.join(REPO_ROOT, "unitree_rl_lab/source/unitree_rl_lab"))
+-
+-LL_POLICY_PATH = "/mnt/tribe-share/trajan/rlpolicyworking/policy.pt"
+-if not os.path.exists(LL_POLICY_PATH):
+-    LL_POLICY_PATH = LL_POLICY_PATH.replace("/mnt/", "/srv/")
+-
+-# 2026-06-29 run: act_dim=6, best training run (1.3M steps)
+-def _resolve(p):
+-    """Fall back from /mnt/ to /srv/ if path does not exist."""
+-    if not os.path.exists(p):
+-        alt = p.replace("/mnt/", "/srv/")
+-        if os.path.exists(alt):
+-            return alt
+-    return p
+-
+-CKPT_DIR_MAIN  = _resolve("/mnt/tribe-share/trajan/IsaacLab/ENMAmiddle/checkpoints/2026-06-29_10-35-15")
+-ENMA_MEAN_CKPT = os.path.join(CKPT_DIR_MAIN, "model_0.pt")     # Best-return ckpt, act_dim=6
+-ENMA_BEST_CKPT = os.path.join(CKPT_DIR_MAIN, "model_5550.pt")  # Near iter 5593 (best bonus=0.0279), act_dim=6
+-ENMA_NEW_BEST_CKPT = _resolve("/mnt/tribe-share/trajan/IsaacLab/ENMAmiddle/checkpoints/2026-07-02_14-15-16/model_it0800.pt")
+-
+-EPISODES  = 30
++sys.path.insert(0, os.path.join(UNITREE_SRC, "unitree_rl_lab"))
++
+ MAX_STEPS = 15000
+ FALL_H    = 0.15
+@@ -61,7 +46,25 @@
+ 
+ parser = argparse.ArgumentParser()
++parser.add_argument("--ll_policy", type=str,
++                    default=os.path.join(REPO_ROOT, "checkpoints", "low_level_locomotion", "policy.pt"),
++                    help="Low-level walking policy (TorchScript).")
++parser.add_argument("--enma_return_ckpt", type=str,
++                    default=os.path.join(REPO_ROOT, "checkpoints", "enma", "model_0.pt"),
++                    help="ENMA checkpoint with the best total return ('ENMA (mean)').")
++parser.add_argument("--enma_affect_ckpt", type=str,
++                    default=os.path.join(REPO_ROOT, "checkpoints", "enma", "model_5550.pt"),
++                    help="ENMA checkpoint with the best affective reward ('ENMA (best)').")
++parser.add_argument("--episodes", type=int, default=30, help="Episodes per configuration.")
++parser.add_argument("--out_dir", type=str, default=os.path.join(SCRIPT_DIR, "results"),
++                    help="Directory for the csv / json / markdown outputs.")
+ AppLauncher.add_app_launcher_args(parser)
+ args_cli = parser.parse_args()
+ args_cli.headless = True
++
++LL_POLICY_PATH = args_cli.ll_policy
++ENMA_MEAN_CKPT = args_cli.enma_return_ckpt   # best total return, act_dim=6
++ENMA_BEST_CKPT = args_cli.enma_affect_ckpt   # best affective reward, act_dim=6
++EPISODES       = args_cli.episodes
++OUT_DIR        = args_cli.out_dir
+ 
+ app_launcher = AppLauncher(args_cli)
+@@ -433,4 +436,5 @@
+ 
+ def save(all_results: list[dict], tables: dict[str, dict]):
++    os.makedirs(OUT_DIR, exist_ok=True)
+     ts     = datetime.now().strftime("%Y%m%d_%H%M%S")
+     ctrls  = list(tables.keys())
+@@ -461,5 +465,4 @@
+         f"*ENMA mean: {ENMA_MEAN_CKPT}*",
+         f"*ENMA best: {ENMA_BEST_CKPT}*",
+-        f"*ENMA new best: {ENMA_NEW_BEST_CKPT}*",
+         "",
+         "| Metric | " + " | ".join(ctrls) + " |",
+@@ -483,5 +486,4 @@
+             "enma_mean_ckpt": ENMA_MEAN_CKPT,
+             "enma_best_ckpt": ENMA_BEST_CKPT,
+-            "enma_new_best_ckpt": ENMA_NEW_BEST_CKPT,
+             "tables": tables,
+             "raw_results": all_results,
+@@ -494,14 +496,13 @@
+ def main():
+     device = "cuda" if torch.cuda.is_available() else "cpu"
+-    print(f"\n[run_real_eval]  device={device}  episodes={EPISODES}  max_steps={MAX_STEPS}")
++    print(f"\n[run_evaluation]  device={device}  episodes={EPISODES}  max_steps={MAX_STEPS}")
+     print(f"  LL policy:       {LL_POLICY_PATH}")
+     print(f"  ENMA mean ckpt:  {ENMA_MEAN_CKPT}")
+     print(f"  ENMA best ckpt:  {ENMA_BEST_CKPT}")
+-    print(f"  ENMA new best:   {ENMA_NEW_BEST_CKPT}")
+ 
+     # ── Verify all model paths exist before wasting time on env creation ──────
+-    for path in [LL_POLICY_PATH, ENMA_MEAN_CKPT, ENMA_BEST_CKPT, ENMA_NEW_BEST_CKPT]:
++    for path in [LL_POLICY_PATH, ENMA_MEAN_CKPT, ENMA_BEST_CKPT]:
+         if not os.path.exists(path):
+-            raise FileNotFoundError(f"[run_real_eval] MISSING: {path}")
++            raise FileNotFoundError(f"[run_evaluation] MISSING: {path}")
+         else:
+             print(f"  [OK] exists: {path}")
+@@ -510,5 +511,4 @@
+     enma_mean     = load_enma(ENMA_MEAN_CKPT, device)
+     enma_best     = load_enma(ENMA_BEST_CKPT, device)
+-    enma_new_best = load_enma(ENMA_NEW_BEST_CKPT, device)
+ 
+     # ── Create a SINGLE env and reuse it across all controllers ──────────────
+@@ -540,5 +540,5 @@
+     }
+     save(r1 + r2 + r3 + r4 + r5 + r6, tables)
+-    print("\n[run_real_eval] DONE.")
++    print("\n[run_evaluation] DONE.")
+ 
+ 

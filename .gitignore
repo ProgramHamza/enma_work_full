@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.idea/
+.vscode/
+*.egg-info/
+# training outputs
+ENMAmiddle/checkpoints/
+ENMAmiddle/videos/
+logs/
+outputs/
+*.mp4
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

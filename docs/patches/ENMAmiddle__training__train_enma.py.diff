@@ -1,0 +1,81 @@
+--- original/ENMAmiddle/training/train_enma.py
++++ ENMA_STAR/ENMAmiddle/training/train_enma.py
+@@ -9,5 +9,4 @@
+ 
+ from isaaclab.app import AppLauncher
+-print("BEFORE APP LAUNCHER", flush=True)
+ 
+ parser = argparse.ArgumentParser(description="Train ENMA SNN")
+@@ -17,4 +16,7 @@
+                     help="Disable affect scoring and use zero scores.")
+ parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume from.")
++parser.add_argument("--caesar_ckpt", type=str, default=None,
++                    help="Path to the Caesar (FastAffectCNN) weights. Defaults to $ENMA_CAESAR_CKPT, "
++                         "then <repo>/checkpoints/caesar/best_model.pth.")
+ AppLauncher.add_app_launcher_args(parser)
+ args, unknown_args = parser.parse_known_args()
+@@ -27,6 +29,4 @@
+ app_launcher = AppLauncher(args)
+ simulation_app = app_launcher.app
+-print("AFTER APP LAUNCHER", flush=True)
+-print("AFTER SIM APP", flush=True)
+ 
+ import torch
+@@ -40,5 +40,6 @@
+ # Import custom modules
+ REPO_ROOT = Path(__file__).resolve().parents[2]
+-UNITREE_SRC = REPO_ROOT / "unitree_rl_lab" / "source"
++# Location of the unitree_rl_lab sources; override with $UNITREE_RL_LAB_SRC if it lives elsewhere.
++UNITREE_SRC = Path(os.environ.get("UNITREE_RL_LAB_SRC", str(REPO_ROOT / "unitree_rl_lab" / "source")))
+ if str(REPO_ROOT) not in sys.path:
+     sys.path.insert(0, str(REPO_ROOT))
+@@ -56,10 +57,10 @@
+ 
+ # ── FastCNN model definition (mirrors fast_cnn/train.py exactly) ─────────────
+-_FAST_CNN_CKPT = Path("/mnt/tribe-share/enma/models/fast_cnn/checkpoints/best_model.pth")
+-# Try /srv mount as fallback
+-if not _FAST_CNN_CKPT.exists():
+-    _alt = Path(str(_FAST_CNN_CKPT).replace("/mnt/tribe-share/", "/srv/tribe-share/", 1))
+-    if _alt.exists():
+-        _FAST_CNN_CKPT = _alt
++# Caesar weights: --caesar_ckpt, then $ENMA_CAESAR_CKPT, then <repo>/checkpoints/caesar/best_model.pth
++_FAST_CNN_CKPT = Path(
++    args.caesar_ckpt
++    or os.environ.get("ENMA_CAESAR_CKPT")
++    or str(REPO_ROOT / "checkpoints" / "caesar" / "best_model.pth")
++)
+ 
+ def _build_fast_affect_cnn():
+@@ -188,25 +189,4 @@
+             with torch.no_grad():
+                 actions, log_probs, value = policy.act_and_evaluate(policy_obs)
+-
+-            # One-shot real-render snapshot (debug only, iter=1 step=100)
+-            if it == 1 and step == 100:
+-                try:
+-                    import torchvision.utils as tv_utils
+-                    from PIL import Image
+-                    print("[Screenshot] Capturing camera sensor views ...", flush=True)
+-                    camera = env.scene["human_pov_camera"]
+-                    rendered_tensors = camera.data.output["rgb"].clone()
+-                    if rendered_tensors.shape[-1] == 4:
+-                        rendered_tensors = rendered_tensors[..., :3]
+-                    grid_input = rendered_tensors.permute(0, 3, 1, 2).cpu().float() / 255.0
+-                    grid_img_tensor = tv_utils.make_grid(grid_input, nrow=8, padding=2)
+-                    grid_np = grid_img_tensor.permute(1, 2, 0).numpy()
+-                    grid_np = (grid_np * 255.0).astype(np.uint8)
+-                    out_img_path = "/mnt/tribe-share/trajan/IsaacLab/ENMAmiddle/analysis/real_simulation_grid.png"
+-                    os.makedirs(os.path.dirname(out_img_path), exist_ok=True)
+-                    Image.fromarray(grid_np).save(out_img_path)
+-                    print(f"[Screenshot] Saved to {out_img_path}", flush=True)
+-                except Exception as screenshot_err:
+-                    print(f"[Screenshot] Warning: {screenshot_err}", flush=True)
+ 
+             next_obs, reward, terminated, truncated, info = env.step(actions)
+@@ -492,5 +472,5 @@
+                     if param.grad is not None and torch.isnan(param.grad).any():
+                         raise RuntimeError(f"NaN gradient detected in {name} at iteration {it}")
+-                torch.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=0.5)
++                torch.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=max_grad_norm)
+                 optimizer.step()
+ 
